@@ -31,7 +31,7 @@ impl ::specs::System<Delta> for System {
             if clickable.clicked {
                 let target = tile_map.get_tile(tile.get_location()).unwrap();
                 clickable.clicked = false;
-                render_data.set_tint(::art::spritesheet::tiles::FOREGROUND_TINT);
+                render_data.set_tint(::art::square::tiles::FOREGROUND_TINT);
 
                 for mut dwarf in (&mut dwarves).iter() {
                     if dwarf.get_entity_path().is_empty() {

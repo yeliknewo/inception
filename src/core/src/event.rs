@@ -1,3 +1,6 @@
+use sys::{control, render, tile_builder};
+use ::game;
+
 #[derive(Debug)]
 pub struct GameEventHub {
     pub control_channel: Option<::sys::control::Channel>,
@@ -88,25 +91,19 @@ impl DevEventHub{
         }
     }
 
-    pub fn recv_from_control(&mut self) -> Result<::sys::control::SendEvent, ::utils::Error> {
+    pub fn recv_from_control(&mut self) -> control::SendEvent {
         match self.recv_from_control.recv() {
-            Ok(event) => Ok(event),
-            Err(err) => {
-                error!("recv from control error: {}", err);
-                Err(::utils::Error::Logged)
-            },
+            Ok(event) => event,
+            Err(err) => panic!("recv from control error: {}", err),
         }
     }
 
-    pub fn try_recv_from_control(&mut self) -> Result<::sys::control::SendEvent, ::utils::Error> {
+    pub fn try_recv_from_control(&mut self) -> Option<control::SendEvent> {
         match self.recv_from_control.try_recv() {
-            Ok(event) => Ok(event),
+            Ok(event) => Some(event),
             Err(err) => match err {
-                ::std::sync::mpsc::TryRecvError::Empty => Err(::utils::Error::Empty),
-                ::std::sync::mpsc::TryRecvError::Disconnected => {
-                    error!("try recv from control was disconnected");
-                    Err(::utils::Error::Logged)
-                },
+                ::std::sync::mpsc::TryRecvError::Empty => None,
+                ::std::sync::mpsc::TryRecvError::Disconnected => panic!("try recv from control was disconnected"),
             }
         }
     }
@@ -118,13 +115,10 @@ impl DevEventHub{
         }
     }
 
-    pub fn recv_from_render(&mut self) -> Result<::sys::render::SendEvent, ::utils::Error> {
+    pub fn recv_from_render(&mut self) -> render::SendEvent {
         match self.recv_from_render.recv() {
-            Ok(event) => Ok(event),
-            Err(err) => {
-                error!("recv from render err: {}", err);
-                Err(::utils::Error::Logged)
-            },
+            Ok(event) => event,
+            Err(err) => panic!("recv from render err: {}", err),
         }
     }
 
@@ -135,25 +129,19 @@ impl DevEventHub{
         }
     }
 
-    pub fn recv_from_game(&mut self) -> Result<::game::SendEvent, ::utils::Error> {
+    pub fn recv_from_game(&mut self) -> game::SendEvent {
         match self.recv_from_game.recv() {
-            Ok(event) => Ok(event),
-            Err(err) => {
-                error!("recv from game err: {}", err);
-                Err(::utils::Error::Logged)
-            }
+            Ok(event) => event,
+            Err(err) => panic!("recv from game err: {}", err),
         }
     }
 
-    pub fn try_recv_from_game(&mut self) -> Result<::game::SendEvent, ::utils::Error> {
+    pub fn try_recv_from_game(&mut self) -> Option<game::SendEvent> {
         match self.recv_from_game.try_recv() {
-            Ok(event) => Ok(event),
+            Ok(event) => Some(event),
             Err(err) => match err {
-                ::std::sync::mpsc::TryRecvError::Empty => Err(::utils::Error::Empty),
-                ::std::sync::mpsc::TryRecvError::Disconnected => {
-                    error!("try recv from game was disconnected");
-                    Err(::utils::Error::Logged)
-                },
+                ::std::sync::mpsc::TryRecvError::Empty => None,
+                ::std::sync::mpsc::TryRecvError::Disconnected => panic!("try recv from game was disconnected"),
             },
         }
     }
@@ -165,15 +153,12 @@ impl DevEventHub{
         }
     }
 
-    pub fn try_recv_from_tile_builder(&mut self) -> Result<::sys::tile_builder::SendEvent, ::utils::Error> {
+    pub fn try_recv_from_tile_builder(&mut self) -> Option<tile_builder::SendEvent> {
         match self.recv_from_tile_builder.try_recv() {
-            Ok(event) => Ok(event),
+            Ok(event) => Some(event),
             Err(err) => match err {
-                ::std::sync::mpsc::TryRecvError::Empty => Err(::utils::Error::Empty),
-                ::std::sync::mpsc::TryRecvError::Disconnected => {
-                    error!("try recv from tile builder was disconnected");
-                    Err(::utils::Error::Logged)
-                },
+                ::std::sync::mpsc::TryRecvError::Empty => None,
+                ::std::sync::mpsc::TryRecvError::Disconnected => panic!("try recv from tile builder was disconnected"),
             },
         }
     }

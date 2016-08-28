@@ -44,7 +44,7 @@ impl Component {
         far: ::utils::GfxCoord,
         is_main: bool
     ) -> Component {
-        Component::new(eye, target, up, ::nalgebra::OrthographicMatrix3::new_with_fov(aspect_ratio, fov, near, far), aspect_ratio, is_main)
+        Component::new(eye, target, up, ::nalgebra::OrthographicMatrix3::from_fov(aspect_ratio, fov, near, far), aspect_ratio, is_main)
     }
 
     pub fn new_from_ortho_helper(

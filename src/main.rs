@@ -15,8 +15,6 @@ fn main() {
             panic!("unable to initiate env logger: {}", err)
     );
 
-    match core::start() {
-        Ok(()) => info!("game exiting"),
-        Err(err) => error!("core start error: {}", err),
-    }
+    core::start();
+    info!("game exited successfully");
 }

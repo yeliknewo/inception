@@ -1,7 +1,9 @@
+use ::Shaders;
+
 pub type Index = u32;
 
-pub fn make_shaders() -> Result<::Shaders, ::utils::Error> {
-    ::Shaders::new("spritesheet_150_v.glsl", "spritesheet_150_f.glsl")
+pub fn make_shaders() -> Shaders {
+    Shaders::new("spritesheet_150_v.glsl", "spritesheet_150_f.glsl")
 }
 
 gfx_defines! {

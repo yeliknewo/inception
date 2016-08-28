@@ -46,6 +46,6 @@ impl OrthographicHelper {
     }
 
     pub fn build_matrix(&self) -> ::nalgebra::OrthographicMatrix3<::utils::GfxCoord> {
-        ::nalgebra::OrthographicMatrix3::new_with_fov(self.get_aspect_ratio(), self.get_fov(), self.get_znear(), self.get_zfar())
+        ::nalgebra::OrthographicMatrix3::from_fov(self.get_aspect_ratio(), self.get_fov(), self.get_znear(), self.get_zfar())
     }
 }

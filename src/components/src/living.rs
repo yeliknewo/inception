@@ -80,12 +80,12 @@ impl Component {
                 Some(rect) => rect,
                 None => {
                     error!("rect vec had no rect for frame count: {}", self.frame_count);
-                    ::art::spritesheet::ERROR
+                    ::art::square::ERROR
                 },
             },
             None => {
                 error!("state rects map had no vec for state: {}", self.state_pair.0);
-                ::art::spritesheet::ERROR
+                ::art::square::ERROR
             },
         }
     }

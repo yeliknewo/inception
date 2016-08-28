@@ -12,9 +12,8 @@ extern crate env_logger;
 extern crate utils;
 
 use std::io::Read;
+use gfx::Factory;
 
-pub mod color;
-pub mod texture;
 pub mod spritesheet;
 
 pub type ColorFormat = gfx::format::Rgba8;
@@ -27,13 +26,10 @@ pub struct Shaders {
 }
 
 impl Shaders {
-    pub fn new(vertex_name: &'static str, fragment_name: &'static str) -> Result<Shaders, ::utils::Error> {
+    pub fn new(vertex_name: &'static str, fragment_name: &'static str) -> Shaders{
         let shaders_path = match ::find_folder::Search::ParentsThenKids(3, 3).for_folder("shader") {
             Ok(shaders_path) => shaders_path,
-            Err(err) => {
-                error!("find folder shader error: {}", err);
-                return Err(::utils::Error::Logged);
-            }
+            Err(err) => panic!("find folder shader error: {}", err),
         };
 
         let mut vertex_path = shaders_path.clone();
@@ -44,17 +40,11 @@ impl Shaders {
 
         let vertex_file = match ::std::fs::File::open(vertex_path) {
             Ok(file) => file,
-            Err(err) => {
-                error!("vertex file open error: {}", err);
-                return Err(::utils::Error::Logged);
-            }
+            Err(err) => panic!("vertex file open error: {}", err),
         };
         let fragment_file = match ::std::fs::File::open(fragment_path) {
             Ok(file) => file,
-            Err(err) => {
-                error!("fragment file open error: {}", err);
-                return Err(::utils::Error::Logged);
-            }
+            Err(err) => panic!("fragment file open error: {}", err),
         };
 
         let mut vertex_reader = ::std::io::BufReader::new(vertex_file);
@@ -65,23 +55,17 @@ impl Shaders {
 
         match vertex_reader.read_to_end(&mut vertex_buffer) {
             Ok(_) => (),
-            Err(err) => {
-                error!("vertex reader read to end error: {}", err);
-                return Err(::utils::Error::Logged);
-            }
+            Err(err) => panic!("vertex reader read to end error: {}", err),
         };
         match fragment_reader.read_to_end(&mut fragment_buffer) {
             Ok(_) => (),
-            Err(err) => {
-                error!("fragment reader read to end error: {}", err);
-                return Err(::utils::Error::Logged);
-            }
+            Err(err) => panic!("fragment reader read to end error: {}", err),
         }
 
-        Ok(Shaders {
+        Shaders {
             vertex: vertex_buffer,
             fragment: fragment_buffer,
-        })
+        }
     }
 
     pub fn get_vertex_shader(&self) -> &[u8] {
@@ -91,6 +75,22 @@ impl Shaders {
     pub fn get_fragment_shader(&self) -> &[u8] {
         self.fragment.as_slice()
     }
+}
+
+pub fn load_texture<P>(factory: &mut ::gfx_device_gl::Factory, path: P) -> ::gfx::handle::ShaderResourceView<::gfx_device_gl::Resources, [f32; 4]>
+where P: AsRef<::std::path::Path>
+{
+    let image = match ::image::open(path) {
+        Ok(image) => image,
+        Err(err) => panic!("image load error: {}", err),
+    }.to_rgba();
+    let (width, height) = image.dimensions();
+    let kind = ::gfx::tex::Kind::D2(width as ::gfx::tex::Size, height as ::gfx::tex::Size, ::gfx::tex::AaMode::Single);
+    let (_, view) = match factory.create_texture_const_u8::<::ColorFormat>(kind, &[&image]) {
+        Ok(data) => data,
+        Err(err) => panic!("factory create texture const error: {}", err),
+    };
+    view
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq)]

@@ -18,7 +18,6 @@ pub enum RecvEvent {
 #[derive(Debug)]
 pub enum SendEvent {
     Resize,
-    Error(::utils::Error),
     Exited,
 }
 
@@ -190,11 +189,7 @@ impl ::specs::System<::utils::Delta> for System {
 
         let camera = match camera_opt {
             Some(c) => c,
-            None => {
-                error!("run camera opt was none");
-                self.channel.0.send(SendEvent::Error(::utils::Error::Logged)).unwrap();
-                return;
-            }
+            None => panic!("run camera opt was none"),
         };
 
         if let Some(input) = self.mouse_button.pop() {
@@ -203,10 +198,10 @@ impl ::specs::System<::utils::Delta> for System {
                     for (t, mut c, mut td) in (&transform, &mut clickable, &mut texture_data).iter() {
                         if  c.hitbox.check_collide_point(camera.screen_to_world_point(self.mouse_location.clone()) + t.get_gui_offset()) {
                             c.clicked = true;
-                            td.set_tint(::art::spritesheet::tiles::SELECTED_TINT);
+                            td.set_tint(::art::square::tiles::SELECTED_TINT);
                         } else if c.clicked {
                             c.clicked = false;
-                            td.set_tint(::art::spritesheet::tiles::FOREGROUND_TINT);
+                            td.set_tint(::art::square::tiles::FOREGROUND_TINT);
                         }
                     }
                 },

@@ -35,7 +35,7 @@ impl Game {
         mouse_location: ::math::Point2,
         screen_resolution: ::math::Point2,
         ortho_helper: ::math::OrthographicHelper
-    ) -> Result<Game, ::utils::Error> {
+    ) -> Game {
         let target_delta_time = 1.0 / 60.0;
 
         let mut planner = {
@@ -58,13 +58,10 @@ impl Game {
             ::specs::Planner::<::utils::Delta>::new(w, 8)
         };
 
-        let mut renderer = try!(::sys::render::System::new(match game_event_hub.render_channel.take() {
+        let mut renderer = ::sys::render::System::new(match game_event_hub.render_channel.take() {
             Some(channel) => channel,
-            None => {
-                error!("game event hub render channel was none");
-                return Err(::utils::Error::Logged)
-            },
-        }));
+            None => panic!("game event hub render channel was none"),
+        });
 
         planner.mut_world().create_now()
             .with(::comps::Camera::new_from_ortho_helper(
@@ -76,58 +73,47 @@ impl Game {
             ))
             .build();
 
-        let packet = ::art::spritesheet::make_square_render();
+        let packet = ::art::square::make_square_render();
 
         let assets_folder = match ::find_folder::Search::ParentsThenKids(3, 3).for_folder("assets") {
             Ok(path) => path,
-            Err(err) => {
-                error!("error finding assets folder: {}", err);
-                return Err(::utils::Error::Logged);
-            }
+            Err(err) => panic!("error finding assets folder: {}", err),
         };
 
         let tiles_render = {
-            let texture = try!(
-                ::graphics::texture::load_texture(
-                    factory,
-                    assets_folder.join(
-                        "Tiles/tiles_spritesheet.png"
-                    )
+            let texture = ::graphics::load_texture(
+                factory,
+                assets_folder.join(
+                    "Tiles/tiles_spritesheet.png"
                 )
             );
-            try!(
-                renderer.add_render_type_spritesheet(
-                    factory,
-                    &packet,
-                    texture
-                )
+            renderer.add_render_type_spritesheet(
+                factory,
+                &packet,
+                texture
             )
         };
 
         let p1_render = {
-            let texture = try!(
-                ::graphics::texture::load_texture(
-                    factory,
-                    assets_folder.join(
-                        "Player/p1_spritesheet.png"
-                    )
+            let texture = ::graphics::load_texture(
+                factory,
+                assets_folder.join(
+                    "Player/p1_spritesheet.png"
                 )
             );
-            try!(
-                renderer.add_render_type_spritesheet(
-                    factory,
-                    &packet,
-                    texture
-                )
+            renderer.add_render_type_spritesheet(
+                factory,
+                &packet,
+                texture
             )
         };
 
-        let p1_idle = vec!(::art::spritesheet::p1::STAND);
+        let p1_idle = vec!(::art::square::p1::STAND);
 
         let mut p1_walk = vec!();
-        p1_walk.extend_from_slice(&::art::spritesheet::p1::WALK);
+        p1_walk.extend_from_slice(&::art::square::p1::WALK);
 
-        let p1_fall = vec!(::art::spritesheet::p1::HURT);
+        let p1_fall = vec!(::art::square::p1::HURT);
 
         for _ in 0..1 {
             planner.mut_world().create_now()
@@ -139,7 +125,7 @@ impl Game {
                     ),
                     ::nalgebra::Vector3::new(1.0, 1.0, 1.0)
                 ))
-                .with(::comps::RenderData::new(::art::spritesheet::layers::PLAYER, ::art::spritesheet::p1::DEFAULT_TINT, ::art::spritesheet::p1::STAND, ::art::spritesheet::p1::SIZE))
+                .with(::comps::RenderData::new(::art::square::layers::PLAYER, ::art::square::p1::DEFAULT_TINT, ::art::square::p1::STAND, ::art::square::p1::SIZE))
                 .with(::comps::Physical::new(::math::Point2::new(0.0, 0.0), ::math::Point2::new(1.0, 1.0), ::math::Point2::new(0.001, 0.001)))
                 .with(::comps::Living::new(
                     p1_idle.clone(),
@@ -155,10 +141,7 @@ impl Game {
             ::sys::control::System::new(
                 match game_event_hub.control_channel.take() {
                     Some(channel) => channel,
-                    None => {
-                        error!("game event hub control channel was none");
-                        return Err(::utils::Error::Logged);
-                    }
+                    None => panic!("game event hub control channel was none"),
                 },
                 ::math::Point2::new(10.0, 10.0),
                 mouse_location,
@@ -213,10 +196,7 @@ impl Game {
         planner.add_system(
             ::sys::TileBuilder::new(match game_event_hub.tile_builder_channel.take() {
                 Some(channel) => channel,
-                None => {
-                    error!("game event hub tile builder channel was none");
-                    return Err(::utils::Error::Logged);
-                }
+                None => panic!("game event hub tile builder channel was none"),
             }),
             "tile_builder",
             14
@@ -224,20 +204,17 @@ impl Game {
 
         planner.add_system(renderer, "renderer", 10);
 
-        Ok(Game {
+        Game {
             planner: planner,
             last_time: ::time::precise_time_ns(),
             channel: match game_event_hub.game_channel.take() {
                 Some(channel) => channel,
-                None => {
-                    error!("game event hub game channel was none");
-                    return Err(::utils::Error::Logged);
-                }
+                None => panic!("game event hub game channel was none"),
             },
             fps_counter: ::utils::fps_counter::FpsCounter::new(),
             p1_render: p1_render,
             tiles_render: tiles_render,
-        })
+        }
     }
 
 
@@ -259,7 +236,7 @@ impl Game {
                             ::nalgebra::Vector3::new(1.0, 1.0, 1.0)
                         )
                     )
-                    .with(::comps::RenderData::new(::art::spritesheet::layers::TILES, ::art::spritesheet::tiles::FOREGROUND_TINT, art_rect, ::art::spritesheet::tiles::SIZE))
+                    .with(::comps::RenderData::new(::art::square::layers::TILES, ::art::square::tiles::FOREGROUND_TINT, art_rect, ::art::square::tiles::SIZE))
                     .with(::comps::Clickable::new(::math::Rect::new_from_coords(0.0, 0.0, 1.0, 1.0)))
                     .with(PathFindingData::new())
                     .build()))) {

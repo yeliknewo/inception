@@ -106,9 +106,9 @@ impl ::specs::System<::utils::Delta> for System {
                                 ::comps::tile::PathType::Walkable,
                                 {
                                     if checking.get_y() < 9 {
-                                        ::art::spritesheet::tiles::GRASS_CENTER
+                                        ::art::square::tiles::GRASS_CENTER
                                     } else {
-                                        ::art::spritesheet::tiles::GRASS_MID
+                                        ::art::square::tiles::GRASS_MID
                                     }
                                 }
                             )) {

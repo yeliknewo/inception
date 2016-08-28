@@ -20,7 +20,16 @@ extern crate math;
 pub mod event;
 pub mod game;
 
-pub fn start() -> Result<(), ::utils::Error> {
+use std::thread;
+
+use math::{Point2, OrthographicHelper};
+use utils::{GfxCoord};
+use graphics::{build_graphics};
+use event::{DevEventHub};
+use sys::{render, control, tile_builder};
+use game::{Game};
+
+pub fn start() {
     let (width, height): (u32, u32) = (640, 480);
 
     let fov = 90.0;
@@ -29,40 +38,38 @@ pub fn start() -> Result<(), ::utils::Error> {
 
     let zfar = 10.0;
 
-    let aspect_ratio = width as ::utils::GfxCoord / height as ::utils::GfxCoord;
+    let aspect_ratio = width as GfxCoord / height as GfxCoord;
 
-    let ortho_helper = ::math::OrthographicHelper::new(aspect_ratio, fov, znear, zfar);
+    let ortho_helper = OrthographicHelper::new(aspect_ratio, fov, znear, zfar);
 
-    let ((mut out_color, mut out_depth), mut factory, encoder, window, mut device) = ::graphics::build_graphics(640, 480);
+    let ((mut out_color, mut out_depth), mut factory, encoder, window, mut device) = build_graphics(640, 480);
 
-    let (mut event_dev, game_event) = ::event::DevEventHub::new();
+    let (mut event_dev, game_event) = DevEventHub::new();
 
-    event_dev.send_to_render(sys::render::RecvEvent::GraphicsData(out_color.clone(), out_depth.clone()));
+    event_dev.send_to_render(render::RecvEvent::GraphicsData(out_color.clone(), out_depth.clone()));
 
-    event_dev.send_to_render(sys::render::RecvEvent::Encoder(encoder.clone_empty()));
-    event_dev.send_to_render(sys::render::RecvEvent::Encoder(encoder));
+    event_dev.send_to_render(render::RecvEvent::Encoder(encoder.clone_empty()));
+    event_dev.send_to_render(render::RecvEvent::Encoder(encoder));
 
-    let game = try!(
-        game::Game::new(
-            &mut factory,
-            game_event,
-            ::math::Point2::new(0.0, 0.0),
-            ::math::Point2::new(
-                out_color.get_dimensions().0 as ::utils::Coord,
-                out_color.get_dimensions().1 as ::utils::Coord
-            ),
-            ortho_helper
-        )
+    let game = Game::new(
+        &mut factory,
+        game_event,
+        Point2::new(0.0, 0.0),
+        Point2::new(
+            out_color.get_dimensions().0 as ::utils::Coord,
+            out_color.get_dimensions().1 as ::utils::Coord
+        ),
+        ortho_helper
     );
 
-    std::thread::spawn(|| {
+    thread::spawn(|| {
         let mut game = game;
         while game.frame() {}
     });
 
     'main: loop {
-        match try!(event_dev.recv_from_render()) {
-            sys::render::SendEvent::Encoder(mut encoder) => {
+        match event_dev.recv_from_render() {
+            render::SendEvent::Encoder(mut encoder) => {
                 use gfx::Device;
 
                 for event in window.poll_events() {
@@ -74,78 +81,55 @@ pub fn start() -> Result<(), ::utils::Error> {
                 }
 
                 encoder.flush(&mut device);
-                event_dev.send_to_render(sys::render::RecvEvent::Encoder(encoder));
+                event_dev.send_to_render(render::RecvEvent::Encoder(encoder));
                 match window.swap_buffers() {
                     Ok(()) => (),
-                    Err(err) => {
-                        error!("window swap buffers error: {}", err);
-                        return Err(::utils::Error::Logged);
-                    },
+                    Err(err) => panic!("window swap buffers error: {}", err),
                 };
                 device.cleanup();
             },
-            sys::render::SendEvent::Error(err) => return Err(err),
-            sys::render::SendEvent::Exited => {
-                error!("render system has exited while in main loop");
-                return Err(::utils::Error::Logged);
-            },
+            render::SendEvent::Exited => panic!("render system has exited while in main loop"),
         }
 
         match event_dev.try_recv_from_control() {
-            Ok(event) => match event {
-                sys::control::SendEvent::Resize => {
+            Some(event) => match event {
+                control::SendEvent::Resize => {
                     gfx_window_glutin::update_views(&window, &mut out_color, &mut out_depth);
-                    event_dev.send_to_render(sys::render::RecvEvent::GraphicsData(out_color.clone(), out_depth.clone()));
+                    event_dev.send_to_render(render::RecvEvent::GraphicsData(out_color.clone(), out_depth.clone()));
                 },
-                sys::control::SendEvent::Error(err) => match err {
-                    utils::Error::Empty => {
-                        error!("control send event error was empty");
-                        return Err(utils::Error::Logged);
-                    },
-                    utils::Error::Logged => return Err(utils::Error::Logged),
-                },
-                sys::control::SendEvent::Exited => {
-                    error!("control system has exited while in main loop");
-                    return Err(::utils::Error::Logged);
-                }
+                control::SendEvent::Exited => panic!("control system has exited while in main loop"),
             },
-            Err(::utils::Error::Empty) => (),
-            Err(::utils::Error::Logged) => return Err(::utils::Error::Logged),
+            None => (),
         }
 
         while match event_dev.try_recv_from_tile_builder() {
-            Ok(event) => match event {
-                sys::tile_builder::SendEvent::NewTile(_, _, _, _) => {
+            Some(event) => match event {
+                tile_builder::SendEvent::NewTile(_, _, _, _) => {
                     event_dev.send_to_game(game::RecvEvent::TileBuilder(event));
                     true
                 },
             },
-            Err(::utils::Error::Empty) => false,
-            Err(::utils::Error::Logged) => return Err(utils::Error::Logged),
+            None => false,
         } {
 
         }
 
         while match event_dev.try_recv_from_game() {
-            Ok(event) => match event {
+            Some(event) => match event {
                 ::game::SendEvent::TileBuilder(event) => {
                     event_dev.send_to_tile_builder(event);
                     true
                 },
-                ::game::SendEvent::Exited => {
-                    error!("game exited while in main loop");
-                    return Err(::utils::Error::Logged);
-                },
+                ::game::SendEvent::Exited => panic!("game exited while in main loop"),
             },
-            Err(::utils::Error::Empty) => false,
-            Err(::utils::Error::Logged) => return Err(::utils::Error::Logged),
+            None => false,
         } {
 
         }
     }
 
-    event_dev.send_to_render(sys::render::RecvEvent::Exit);
-    event_dev.send_to_control(sys::control::RecvEvent::Exit);
+    event_dev.send_to_render(render::RecvEvent::Exit);
+    event_dev.send_to_control(control::RecvEvent::Exit);
     event_dev.send_to_game(game::RecvEvent::Exit);
 
     // while match try!(event_dev.recv_from_render()) {
@@ -168,6 +152,4 @@ pub fn start() -> Result<(), ::utils::Error> {
     // } {
     //
     // }
-
-    Ok(())
 }
