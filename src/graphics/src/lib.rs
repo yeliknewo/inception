@@ -11,13 +11,26 @@ extern crate env_logger;
 
 extern crate utils;
 
-use std::io::Read;
-use gfx::Factory;
+use std::io::{BufReader, Read};
+use std::fs::{File};
+use std::path::{Path};
+
+use gfx::{Factory, Encoder};
+use gfx::handle::{RenderTargetView, DepthStencilView, ShaderResourceView};
+use gfx::tex::{Size, AaMode, Kind};
+use gfx::format::{Rgba8, DepthStencil};
+
+use gfx_device_gl::{Device, Resources, CommandBuffer};
+use gfx_device_gl::Factory as GLFactory;
+
+use glutin::{WindowBuilder, Window};
+
+use find_folder::Search;
 
 pub mod spritesheet;
 
-pub type ColorFormat = gfx::format::Rgba8;
-pub type DepthFormat = gfx::format::DepthStencil;
+pub type ColorFormat = Rgba8;
+pub type DepthFormat = DepthStencil;
 
 #[derive(Debug)]
 pub struct Shaders {
@@ -26,8 +39,8 @@ pub struct Shaders {
 }
 
 impl Shaders {
-    pub fn new(vertex_name: &'static str, fragment_name: &'static str) -> Shaders{
-        let shaders_path = match ::find_folder::Search::ParentsThenKids(3, 3).for_folder("shader") {
+    pub fn new(vertex_name: &'static str, fragment_name: &'static str) -> Shaders {
+        let shaders_path = match Search::ParentsThenKids(3, 3).for_folder("shader") {
             Ok(shaders_path) => shaders_path,
             Err(err) => panic!("find folder shader error: {}", err),
         };
@@ -38,17 +51,17 @@ impl Shaders {
         vertex_path.push(vertex_name);
         fragment_path.push(fragment_name);
 
-        let vertex_file = match ::std::fs::File::open(vertex_path) {
+        let vertex_file = match File::open(vertex_path) {
             Ok(file) => file,
             Err(err) => panic!("vertex file open error: {}", err),
         };
-        let fragment_file = match ::std::fs::File::open(fragment_path) {
+        let fragment_file = match File::open(fragment_path) {
             Ok(file) => file,
             Err(err) => panic!("fragment file open error: {}", err),
         };
 
-        let mut vertex_reader = ::std::io::BufReader::new(vertex_file);
-        let mut fragment_reader = ::std::io::BufReader::new(fragment_file);
+        let mut vertex_reader = BufReader::new(vertex_file);
+        let mut fragment_reader = BufReader::new(fragment_file);
 
         let mut vertex_buffer = vec!();
         let mut fragment_buffer = vec!();
@@ -77,37 +90,30 @@ impl Shaders {
     }
 }
 
-pub fn load_texture<P>(factory: &mut ::gfx_device_gl::Factory, path: P) -> ::gfx::handle::ShaderResourceView<::gfx_device_gl::Resources, [f32; 4]>
-where P: AsRef<::std::path::Path>
+pub fn load_texture<P>(factory: &mut GLFactory, path: P) -> ShaderResourceView<Resources, [f32; 4]>
+where P: AsRef<Path>
 {
-    let image = match ::image::open(path) {
+    let image = match image::open(path) {
         Ok(image) => image,
         Err(err) => panic!("image load error: {}", err),
     }.to_rgba();
     let (width, height) = image.dimensions();
-    let kind = ::gfx::tex::Kind::D2(width as ::gfx::tex::Size, height as ::gfx::tex::Size, ::gfx::tex::AaMode::Single);
-    let (_, view) = match factory.create_texture_const_u8::<::ColorFormat>(kind, &[&image]) {
+    let kind = Kind::D2(width as Size, height as Size, AaMode::Single);
+    let (_, view) = match factory.create_texture_const_u8::<ColorFormat>(kind, &[&image]) {
         Ok(data) => data,
         Err(err) => panic!("factory create texture const error: {}", err),
     };
     view
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq)]
-pub enum RendererType {
-    // Color,
-    // Texture,
-    Spritesheet,
-}
-
 pub fn build_graphics(width: u32, height: u32) -> (
-    (gfx::handle::RenderTargetView<gfx_device_gl::Resources, ColorFormat>, gfx::handle::DepthStencilView<gfx_device_gl::Resources, DepthFormat>),
-    gfx_device_gl::Factory,
-    gfx::Encoder<gfx_device_gl::Resources, gfx_device_gl::CommandBuffer>,
-    glutin::Window,
-    gfx_device_gl::Device
+    (RenderTargetView<Resources, ColorFormat>, DepthStencilView<Resources, DepthFormat>),
+    GLFactory,
+    Encoder<Resources, CommandBuffer>,
+    Window,
+    Device
 ) {
-    let builder = glutin::WindowBuilder::new()
+    let builder = WindowBuilder::new()
         .with_title("Explore")
         .with_dimensions(width, height)
         .with_vsync()

@@ -1,3 +1,8 @@
+use gfx::{Slice, PipelineState, Encoder};
+use gfx::state::{Rasterizer};
+
+use gfx_device_gl::{Resources, CommandBuffer};
+
 use ::Shaders;
 
 pub type Index = u32;
@@ -28,7 +33,6 @@ gfx_defines! {
 
         texture_data: gfx::ConstantBuffer<TextureData> = "b_TextureData",
 
-        // out_color: ::gfx::RenderTarget<::ColorFormat> = "Target0",
         out_color: ::gfx::BlendTarget<::ColorFormat> = ("Target0", gfx::state::MASK_ALL, gfx::preset::blend::ALPHA),
         out_depth: gfx::DepthTarget<::DepthFormat> = ::gfx::preset::depth::LESS_EQUAL_WRITE,
     }
@@ -44,16 +48,16 @@ impl Vertex {
 }
 
 pub struct Bundle {
-    slice: ::gfx::Slice<::gfx_device_gl::Resources>,
-    pso: ::gfx::PipelineState<::gfx_device_gl::Resources, pipe::Meta>,
-    pub data: pipe::Data<::gfx_device_gl::Resources>,
+    slice: Slice<Resources>,
+    pso: PipelineState<Resources, pipe::Meta>,
+    pub data: pipe::Data<Resources>,
 }
 
 impl Bundle {
     pub fn new(
-        slice: ::gfx::Slice<::gfx_device_gl::Resources>,
-        pso: ::gfx::PipelineState<::gfx_device_gl::Resources, pipe::Meta>,
-        data: pipe::Data<::gfx_device_gl::Resources>,
+        slice: Slice<Resources>,
+        pso: PipelineState<Resources, pipe::Meta>,
+        data: pipe::Data<Resources>,
     ) -> Bundle {
         Bundle {
             slice: slice,
@@ -62,7 +66,7 @@ impl Bundle {
         }
     }
 
-    pub fn encode(&self, encoder: &mut ::gfx::Encoder<::gfx_device_gl::Resources, ::gfx_device_gl::CommandBuffer>) {
+    pub fn encode(&self, encoder: &mut Encoder<Resources, CommandBuffer>) {
         encoder.draw(&self.slice, &self.pso, &self.data);
     }
 }
@@ -71,14 +75,14 @@ impl Bundle {
 pub struct Packet {
     vertices: Vec<Vertex>,
     indices: Vec<Index>,
-    rasterizer: ::gfx::state::Rasterizer,
+    rasterizer: Rasterizer,
 }
 
 impl Packet {
     pub fn new(
         vertices: Vec<Vertex>,
         indices: Vec<Index>,
-        rasterizer: ::gfx::state::Rasterizer
+        rasterizer: Rasterizer
     ) -> Packet {
         Packet {
             vertices: vertices,
@@ -95,7 +99,7 @@ impl Packet {
         self.indices.as_slice()
     }
 
-    pub fn get_rasterizer(&self) -> ::gfx::state::Rasterizer {
+    pub fn get_rasterizer(&self) -> Rasterizer {
         self.rasterizer
     }
 }

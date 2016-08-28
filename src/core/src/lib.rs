@@ -23,7 +23,7 @@ pub mod game;
 use std::thread;
 
 use math::{Point2, OrthographicHelper};
-use utils::{GfxCoord};
+use utils::{GfxCoord, Coord};
 use graphics::{build_graphics};
 use event::{DevEventHub};
 use sys::{render, control};
@@ -56,8 +56,8 @@ pub fn start() {
         game_event,
         Point2::new(0.0, 0.0),
         Point2::new(
-            out_color.get_dimensions().0 as ::utils::Coord,
-            out_color.get_dimensions().1 as ::utils::Coord
+            out_color.get_dimensions().0 as Coord,
+            out_color.get_dimensions().1 as Coord
         ),
         ortho_helper
     );
@@ -104,7 +104,7 @@ pub fn start() {
 
         while match event_dev.try_recv_from_game() {
             Some(event) => match event {
-                ::game::SendEvent::Exited => panic!("game exited while in main loop"),
+                game::SendEvent::Exited => panic!("game exited while in main loop"),
             },
             None => false,
         } {

@@ -1,4 +1,4 @@
-use specs::VecStorage;
+use specs::{self, VecStorage};
 
 use math::Rect;
 
@@ -8,7 +8,7 @@ pub struct Component {
     pub hitbox: Rect,
 }
 
-impl ::specs::Component for Component {
+impl specs::Component for Component {
     type Storage = VecStorage<Component>;
 }
 

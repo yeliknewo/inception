@@ -1,6 +1,22 @@
+use glutin::MouseButton;
+
+use std::sync::mpsc::{Sender, Receiver};
+
+use specs;
+use specs::{RunArg};
+
+use math::{OrthographicHelper, Point2};
+
+use comps::{Transform};
+use comps::{Camera};
+use comps::{Clickable};
+use comps::{RenderData};
+
+use utils::{Delta, GfxCoord, Coord};
+
 pub type Channel = (
-    ::std::sync::mpsc::Sender<SendEvent>,
-    ::std::sync::mpsc::Receiver<RecvEvent>
+    Sender<SendEvent>,
+    Receiver<RecvEvent>
 );
 
 #[derive(Debug)]
@@ -11,7 +27,7 @@ pub enum RecvEvent {
     Down(bool),
     Resize(u32, u32),
     MouseMoved(u32, u32),
-    MouseInput(bool, ::glutin::MouseButton),
+    MouseInput(bool, MouseButton),
     Exit,
 }
 
@@ -33,22 +49,22 @@ pub struct System {
     channel: Channel,
     move_h: Sign,
     move_v: Sign,
-    move_speed_mult: ::math::Point2,
+    move_speed_mult: Point2,
     resize: Vec<(u32, u32)>,
-    mouse_location: ::math::Point2,
-    mouse_button: Vec<(bool, ::glutin::MouseButton)>,
-    screen_resolution: ::math::Point2,
-    ortho_helper: ::math::OrthographicHelper,
+    mouse_location: Point2,
+    mouse_button: Vec<(bool, MouseButton)>,
+    screen_resolution: Point2,
+    ortho_helper: OrthographicHelper,
     exited: bool,
 }
 
 impl System {
     pub fn new(
         channel: Channel,
-        move_speed_mult: ::math::Point2,
-        mouse_location: ::math::Point2,
-        screen_resolution: ::math::Point2,
-        ortho_helper: ::math::OrthographicHelper,
+        move_speed_mult: Point2,
+        mouse_location: Point2,
+        screen_resolution: Point2,
+        ortho_helper: OrthographicHelper,
     ) -> System
     {
         System {
@@ -70,9 +86,9 @@ impl System {
             match self.channel.1.try_recv() {
                 Ok(event) => match event {
                     RecvEvent::MouseMoved(x, y) => {
-                        self.mouse_location = ::math::Point2::new(
-                            x as ::utils::Coord / self.screen_resolution.get_x(),
-                            y as ::utils::Coord / self.screen_resolution.get_y()
+                        self.mouse_location = Point2::new(
+                            x as Coord / self.screen_resolution.get_x(),
+                            y as Coord / self.screen_resolution.get_y()
                         );
                     },
                     RecvEvent::MouseInput(pressed, mouse_button) => self.mouse_button.push((pressed, mouse_button)),
@@ -133,8 +149,8 @@ impl System {
     }
 }
 
-impl ::specs::System<::utils::Delta> for System {
-    fn run(&mut self, arg: ::specs::RunArg, time: ::utils::Delta) {
+impl specs::System<Delta> for System {
+    fn run(&mut self, arg: RunArg, time: Delta) {
         use specs::Join;
 
         self.check_input();
@@ -146,10 +162,10 @@ impl ::specs::System<::utils::Delta> for System {
 
         let (transform, mut camera, mut clickable, mut texture_data) = arg.fetch(|w|
             (
-                w.read::<::comps::Transform>(),
-                w.write::<::comps::Camera>(),
-                w.write::<::comps::Clickable>(),
-                w.write::<::comps::RenderData>()
+                w.read::<Transform>(),
+                w.write::<Camera>(),
+                w.write::<Clickable>(),
+                w.write::<RenderData>()
             )
         );
 
@@ -171,16 +187,16 @@ impl ::specs::System<::utils::Delta> for System {
                             Sign::Neg => -1.0,
                         };
                         let offset = c.get_offset();
-                        c.set_offset(::math::Point2::new(
+                        c.set_offset(Point2::new(
                             move_h * time * self.move_speed_mult.get_x() + offset.get_x(),
                             move_v * time * self.move_speed_mult.get_y() + offset.get_y()
                         ));
                     },
                 }
                 for &(width, height) in &self.resize {
-                    self.ortho_helper.set_aspect_ratio(width as ::utils::GfxCoord / height as ::utils::GfxCoord);
+                    self.ortho_helper.set_aspect_ratio(width as GfxCoord / height as GfxCoord);
                     c.set_proj(&self.ortho_helper);
-                    self.screen_resolution = ::math::Point2::new(width as ::utils::Coord, height as ::utils::Coord);
+                    self.screen_resolution = Point2::new(width as Coord, height as Coord);
                 }
                 camera_opt = Some(c);
                 break;
@@ -194,14 +210,14 @@ impl ::specs::System<::utils::Delta> for System {
 
         if let Some(input) = self.mouse_button.pop() {
             match input {
-                (true, ::glutin::MouseButton::Left) => {
+                (true, MouseButton::Left) => {
                     for (t, mut c, mut td) in (&transform, &mut clickable, &mut texture_data).iter() {
                         if  c.hitbox.check_collide_point(camera.screen_to_world_point(self.mouse_location.clone()) + t.get_gui_offset()) {
                             c.clicked = true;
-                            td.set_tint(::art::square::tiles::SELECTED_TINT);
+                            // td.set_tint(::art::square::tiles::SELECTED_TINT);
                         } else if c.clicked {
                             c.clicked = false;
-                            td.set_tint(::art::square::tiles::FOREGROUND_TINT);
+                            // td.set_tint(::art::square::tiles::FOREGROUND_TINT);
                         }
                     }
                 },

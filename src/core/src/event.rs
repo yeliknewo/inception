@@ -1,18 +1,21 @@
+use std::sync::mpsc::{Sender, Receiver, channel, TryRecvError};
+use glutin::Event;
+
 use sys::{control, render};
 use ::game;
 
 #[derive(Debug)]
 pub struct GameEventHub {
-    pub control_channel: Option<::sys::control::Channel>,
-    pub render_channel: Option<::sys::render::Channel>,
-    pub game_channel: Option<::game::Channel>,
+    pub control_channel: Option<control::Channel>,
+    pub render_channel: Option<render::Channel>,
+    pub game_channel: Option<game::Channel>,
 }
 
 impl GameEventHub {
     pub fn new(
-        control_channel: ::sys::control::Channel,
-        render_channel: ::sys::render::Channel,
-        game_channel: ::game::Channel,
+        control_channel: control::Channel,
+        render_channel: render::Channel,
+        game_channel: game::Channel,
     ) -> GameEventHub {
         GameEventHub {
             control_channel: Some(control_channel),
@@ -24,23 +27,22 @@ impl GameEventHub {
 
 #[derive(Debug)]
 pub struct DevEventHub {
-    send_to_control: ::std::sync::mpsc::Sender<::sys::control::RecvEvent>,
-    recv_from_control: ::std::sync::mpsc::Receiver<::sys::control::SendEvent>,
-    send_to_render: ::std::sync::mpsc::Sender<::sys::render::RecvEvent>,
-    recv_from_render: ::std::sync::mpsc::Receiver<::sys::render::SendEvent>,
-    send_to_game: ::std::sync::mpsc::Sender<::game::RecvEvent>,
-    recv_from_game: ::std::sync::mpsc::Receiver<::game::SendEvent>,
+    send_to_control: Sender<control::RecvEvent>,
+    recv_from_control: Receiver<control::SendEvent>,
+    send_to_render: Sender<render::RecvEvent>,
+    recv_from_render: Receiver<render::SendEvent>,
+    send_to_game: Sender<game::RecvEvent>,
+    recv_from_game: Receiver<game::SendEvent>,
 }
 
 impl DevEventHub{
     pub fn new() -> (DevEventHub, GameEventHub) {
-
-        let (send_to_control, recv_to_control) = ::std::sync::mpsc::channel();
-        let (send_from_control, recv_from_control) = ::std::sync::mpsc::channel();
-        let (send_to_render, recv_to_render) = ::std::sync::mpsc::channel();
-        let (send_from_render, recv_from_render) = ::std::sync::mpsc::channel();
-        let (send_to_game, recv_to_game) = ::std::sync::mpsc::channel();
-        let (send_from_game, recv_from_game) = ::std::sync::mpsc::channel();
+        let (send_to_control, recv_to_control) = channel();
+        let (send_from_control, recv_from_control) = channel();
+        let (send_to_render, recv_to_render) = channel();
+        let (send_from_render, recv_from_render) = channel();
+        let (send_to_game, recv_to_game) = channel();
+        let (send_from_game, recv_from_game) = channel();
 
         (
             DevEventHub::new_internal(
@@ -53,14 +55,13 @@ impl DevEventHub{
     }
 
     fn new_internal(
-        send_to_control: ::std::sync::mpsc::Sender<::sys::control::RecvEvent>,
-        recv_from_control: ::std::sync::mpsc::Receiver<::sys::control::SendEvent>,
-        send_to_render: ::std::sync::mpsc::Sender<::sys::render::RecvEvent>,
-        recv_from_render: ::std::sync::mpsc::Receiver<::sys::render::SendEvent>,
-        send_to_game: ::std::sync::mpsc::Sender<::game::RecvEvent>,
-        recv_from_game: ::std::sync::mpsc::Receiver<::game::SendEvent>,
-    ) -> DevEventHub
-    {
+        send_to_control: Sender<control::RecvEvent>,
+        recv_from_control: Receiver<control::SendEvent>,
+        send_to_render: Sender<render::RecvEvent>,
+        recv_from_render: Receiver<render::SendEvent>,
+        send_to_game: Sender<game::RecvEvent>,
+        recv_from_game: Receiver<game::SendEvent>,
+    ) -> DevEventHub {
         DevEventHub {
             send_to_control: send_to_control,
             recv_from_control: recv_from_control,
@@ -72,7 +73,7 @@ impl DevEventHub{
         }
     }
 
-    pub fn send_to_control(&mut self, event: ::sys::control::RecvEvent) {
+    pub fn send_to_control(&mut self, event: control::RecvEvent) {
         match self.send_to_control.send(event) {
             Ok(()) => (),
             Err(err) => error!("send to control error: {}", err),
@@ -90,13 +91,13 @@ impl DevEventHub{
         match self.recv_from_control.try_recv() {
             Ok(event) => Some(event),
             Err(err) => match err {
-                ::std::sync::mpsc::TryRecvError::Empty => None,
-                ::std::sync::mpsc::TryRecvError::Disconnected => panic!("try recv from control was disconnected"),
+                TryRecvError::Empty => None,
+                TryRecvError::Disconnected => panic!("try recv from control was disconnected"),
             }
         }
     }
 
-    pub fn send_to_render(&mut self, event: ::sys::render::RecvEvent) {
+    pub fn send_to_render(&mut self, event: render::RecvEvent) {
         match self.send_to_render.send(event) {
             Ok(()) => (),
             Err(err) => error!("send to render error: {}", err),
@@ -110,7 +111,7 @@ impl DevEventHub{
         }
     }
 
-    pub fn send_to_game(&mut self, event: ::game::RecvEvent) {
+    pub fn send_to_game(&mut self, event: game::RecvEvent) {
         match self.send_to_game.send(event) {
             Ok(()) => (),
             Err(err) => error!("send to game error: {}", err),
@@ -128,41 +129,44 @@ impl DevEventHub{
         match self.recv_from_game.try_recv() {
             Ok(event) => Some(event),
             Err(err) => match err {
-                ::std::sync::mpsc::TryRecvError::Empty => None,
-                ::std::sync::mpsc::TryRecvError::Disconnected => panic!("try recv from game was disconnected"),
+                TryRecvError::Empty => None,
+                TryRecvError::Disconnected => panic!("try recv from game was disconnected"),
             },
         }
     }
 
-    pub fn process_glutin(&mut self, event: ::glutin::Event) {
+    pub fn process_glutin(&mut self, event: Event) {
+        use glutin::Event::{MouseMoved, MouseInput, KeyboardInput, Resized};
+        use glutin::VirtualKeyCode;
+        use glutin::ElementState::{Pressed, Released};
         match event {
-            ::glutin::Event::MouseMoved(x, y) => self.send_to_control(::sys::control::RecvEvent::MouseMoved(x as u32, y as u32)),
-            ::glutin::Event::MouseInput(state, button) => self.send_to_control(::sys::control::RecvEvent::MouseInput(match state {
-                ::glutin::ElementState::Pressed => true,
-                ::glutin::ElementState::Released => false,
+            MouseMoved(x, y) => self.send_to_control(control::RecvEvent::MouseMoved(x as u32, y as u32)),
+            MouseInput(state, button) => self.send_to_control(control::RecvEvent::MouseInput(match state {
+                Pressed => true,
+                Released => false,
             },
             button)),
-            ::glutin::Event::KeyboardInput(state, _, Some(::glutin::VirtualKeyCode::D)) |
-            ::glutin::Event::KeyboardInput(state, _, Some(::glutin::VirtualKeyCode::Right)) => match state {
-                ::glutin::ElementState::Pressed => self.send_to_control(::sys::control::RecvEvent::Right(true)),
-                ::glutin::ElementState::Released => self.send_to_control(::sys::control::RecvEvent::Right(false)),
+            KeyboardInput(state, _, Some(VirtualKeyCode::D)) |
+            KeyboardInput(state, _, Some(VirtualKeyCode::Right)) => match state {
+                Pressed => self.send_to_control(control::RecvEvent::Right(true)),
+                Released => self.send_to_control(control::RecvEvent::Right(false)),
             },
-            ::glutin::Event::KeyboardInput(state, _, Some(::glutin::VirtualKeyCode::A)) |
-            ::glutin::Event::KeyboardInput(state, _, Some(::glutin::VirtualKeyCode::Left)) => match state {
-                ::glutin::ElementState::Pressed => self.send_to_control(::sys::control::RecvEvent::Left(true)),
-                ::glutin::ElementState::Released => self.send_to_control(::sys::control::RecvEvent::Left(false)),
+            KeyboardInput(state, _, Some(VirtualKeyCode::A)) |
+            KeyboardInput(state, _, Some(VirtualKeyCode::Left)) => match state {
+                Pressed => self.send_to_control(control::RecvEvent::Left(true)),
+                Released => self.send_to_control(control::RecvEvent::Left(false)),
             },
-            ::glutin::Event::KeyboardInput(state, _, Some(::glutin::VirtualKeyCode::W)) |
-            ::glutin::Event::KeyboardInput(state, _, Some(::glutin::VirtualKeyCode::Up)) => match state {
-                ::glutin::ElementState::Pressed => self.send_to_control(::sys::control::RecvEvent::Up(true)),
-                ::glutin::ElementState::Released => self.send_to_control(::sys::control::RecvEvent::Up(false)),
+            KeyboardInput(state, _, Some(VirtualKeyCode::W)) |
+            KeyboardInput(state, _, Some(VirtualKeyCode::Up)) => match state {
+                Pressed => self.send_to_control(control::RecvEvent::Up(true)),
+                Released => self.send_to_control(control::RecvEvent::Up(false)),
             },
-            ::glutin::Event::KeyboardInput(state, _, Some(::glutin::VirtualKeyCode::S)) |
-            ::glutin::Event::KeyboardInput(state, _, Some(::glutin::VirtualKeyCode::Down)) => match state {
-                ::glutin::ElementState::Pressed => self.send_to_control(::sys::control::RecvEvent::Down(true)),
-                ::glutin::ElementState::Released => self.send_to_control(::sys::control::RecvEvent::Down(false)),
+            KeyboardInput(state, _, Some(VirtualKeyCode::S)) |
+            KeyboardInput(state, _, Some(VirtualKeyCode::Down)) => match state {
+                Pressed => self.send_to_control(control::RecvEvent::Down(true)),
+                Released => self.send_to_control(control::RecvEvent::Down(false)),
             },
-            ::glutin::Event::Resized(width, height) => self.send_to_control(::sys::control::RecvEvent::Resize(width, height)),
+            Resized(width, height) => self.send_to_control(control::RecvEvent::Resize(width, height)),
             _ => (),
         }
     }

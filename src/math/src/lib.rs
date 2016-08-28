@@ -5,6 +5,11 @@ extern crate env_logger;
 
 extern crate utils;
 
+use std::ops::{Add, Sub, Mul, Div, SubAssign, MulAssign};
+use std::convert::{Into};
+
+use utils::{Coord, CoordI};
+
 pub mod ortho_helper;
 
 pub use self::ortho_helper::OrthographicHelper;
@@ -15,7 +20,7 @@ pub struct Rect {
 }
 
 impl Rect {
-    pub fn new_from_coords(x0: ::utils::Coord, y0: ::utils::Coord, x1: ::utils::Coord, y1: ::utils::Coord) -> Rect {
+    pub fn new_from_coords(x0: Coord, y0: Coord, x1: Coord, y1: Coord) -> Rect {
         Rect::new_from_points(Point2::new(x0, y0), Point2::new(x1, y1))
     }
 
@@ -59,7 +64,7 @@ pub struct LineSeg {
 }
 
 impl LineSeg {
-    pub fn new_from_coords(x0: ::utils::Coord, y0: ::utils::Coord, x1: ::utils::Coord, y1: ::utils::Coord) -> LineSeg {
+    pub fn new_from_coords(x0: Coord, y0: Coord, x1: Coord, y1: Coord) -> LineSeg {
         LineSeg::new(Point2::new(x0, y0), Point2::new(x1, y1))
     }
 
@@ -81,36 +86,36 @@ impl LineSeg {
 
 #[derive(Debug, Hash, Eq, PartialEq, Clone)]
 pub struct Point2I {
-    x: ::utils::CoordI,
-    y: ::utils::CoordI,
+    x: CoordI,
+    y: CoordI,
 }
 
 impl Point2I {
-    pub fn new(x: ::utils::CoordI, y: ::utils::CoordI) -> Point2I {
+    pub fn new(x: CoordI, y: CoordI) -> Point2I {
         Point2I {
             x: x,
             y: y,
         }
     }
 
-    pub fn get_x(&self) -> ::utils::CoordI {
+    pub fn get_x(&self) -> CoordI {
         self.x
     }
 
-    pub fn get_y(&self) -> ::utils::CoordI {
+    pub fn get_y(&self) -> CoordI {
         self.y
     }
 
-    pub fn get_mut_x(&mut self) -> &mut ::utils::CoordI {
+    pub fn get_mut_x(&mut self) -> &mut CoordI {
         &mut self.x
     }
 
-    pub fn get_mut_y(&mut self) -> &mut ::utils::CoordI {
+    pub fn get_mut_y(&mut self) -> &mut CoordI {
         &mut self.y
     }
 }
 
-impl std::ops::Add<Point2I> for Point2I {
+impl Add<Point2I> for Point2I {
     type Output = Point2I;
 
     fn add(self, other: Point2I) -> Point2I {
@@ -118,21 +123,14 @@ impl std::ops::Add<Point2I> for Point2I {
     }
 }
 
-impl std::fmt::Display for Point2I {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "({},{})", self.get_x(), self.get_y())
-    }
-}
-
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct Point2 {
-    x: ::utils::Coord,
-    y: ::utils::Coord,
+    x: Coord,
+    y: Coord,
 }
 
 impl Point2 {
-    pub fn new(x: ::utils::Coord, y: ::utils::Coord) -> Point2 {
+    pub fn new(x: Coord, y: Coord) -> Point2 {
         Point2 {
             x: x,
             y: y,
@@ -143,19 +141,19 @@ impl Point2 {
         Point2::new(0.0, 0.0)
     }
 
-    pub fn get_x(&self) -> ::utils::Coord {
+    pub fn get_x(&self) -> Coord {
         self.x
     }
 
-    pub fn get_y(&self) -> ::utils::Coord {
+    pub fn get_y(&self) -> Coord {
         self.y
     }
 
-    pub fn get_mut_x(&mut self) -> &mut ::utils::Coord {
+    pub fn get_mut_x(&mut self) -> &mut Coord {
         &mut self.x
     }
 
-    pub fn get_mut_y(&mut self) -> &mut ::utils::Coord {
+    pub fn get_mut_y(&mut self) -> &mut Coord {
         &mut self.y
     }
 
@@ -163,7 +161,7 @@ impl Point2 {
         self.clone() / self.length()
     }
 
-    pub fn length(&self) -> ::utils::Coord {
+    pub fn length(&self) -> Coord {
         (self.get_x().powi(2) + self.get_y().powi(2)).sqrt()
     }
 
@@ -184,7 +182,7 @@ impl Point2 {
     }
 }
 
-impl std::ops::Add<Point2> for Point2 {
+impl Add<Point2> for Point2 {
     type Output = Point2;
 
     fn add(self, other: Point2) -> Point2 {
@@ -192,7 +190,7 @@ impl std::ops::Add<Point2> for Point2 {
     }
 }
 
-impl std::ops::Sub<Point2> for Point2 {
+impl Sub<Point2> for Point2 {
     type Output = Point2;
 
     fn sub(self, other: Point2) -> Point2 {
@@ -200,7 +198,7 @@ impl std::ops::Sub<Point2> for Point2 {
     }
 }
 
-impl std::ops::Mul<Point2> for Point2 {
+impl Mul<Point2> for Point2 {
     type Output = Point2;
 
     fn mul(self, other: Point2) -> Point2 {
@@ -208,51 +206,45 @@ impl std::ops::Mul<Point2> for Point2 {
     }
 }
 
-impl std::ops::Mul<::utils::Coord> for Point2 {
+impl Mul<Coord> for Point2 {
     type Output = Point2;
 
-    fn mul(self, other: ::utils::Coord) -> Point2 {
+    fn mul(self, other: Coord) -> Point2 {
         Point2::new(self.get_x() * other, self.get_y() * other)
     }
 }
 
-impl std::ops::Div<::utils::Coord> for Point2 {
+impl Div<Coord> for Point2 {
     type Output = Point2;
 
-    fn div(self, other: ::utils::Coord) -> Point2 {
+    fn div(self, other: Coord) -> Point2 {
         Point2::new(self.get_x() / other, self.get_y() / other)
     }
 }
 
-impl std::ops::SubAssign<Point2> for Point2 {
+impl SubAssign<Point2> for Point2 {
     fn sub_assign(&mut self, other: Point2) {
         self.x -= other.get_x();
         self.y -= other.get_y();
     }
 }
 
-impl std::ops::MulAssign<Point2> for Point2 {
+impl MulAssign<Point2> for Point2 {
     fn mul_assign(&mut self, other: Point2) {
         self.x *= other.get_x();
         self.y *= other.get_y();
     }
 }
 
-impl std::ops::MulAssign<::utils::Coord> for Point2 {
-    fn mul_assign(&mut self, other: ::utils::Coord) {
+impl MulAssign<Coord> for Point2 {
+    fn mul_assign(&mut self, other: Coord) {
         self.x *= other;
         self.y *= other;
     }
 }
 
-impl std::fmt::Display for Point2 {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "({},{})", self.get_x(), self.get_y())
-    }
-}
-
-impl ::std::convert::Into<Point2I> for Point2 {
+impl Into<Point2I> for Point2 {
     fn into(self) -> Point2I {
-        Point2I::new(self.get_x().round() as ::utils::CoordI, self.get_y().round() as ::utils::CoordI)
+        Point2I::new(self.get_x().round() as CoordI, self.get_y().round() as CoordI)
     }
 }

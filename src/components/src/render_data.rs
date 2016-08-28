@@ -1,3 +1,5 @@
+use specs::{self, VecStorage};
+
 #[derive(Debug)]
 pub struct Component {
     tint: [f32; 4],
@@ -9,8 +11,8 @@ pub struct Component {
     dirty_2: bool, // required because double buffering
 }
 
-impl ::specs::Component for Component {
-    type Storage = ::specs::VecStorage<Component>;
+impl specs::Component for Component {
+    type Storage = VecStorage<Component>;
 }
 
 impl Component {
