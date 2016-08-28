@@ -1,5 +1,5 @@
 [root]
-name = "explore"
+name = "inception"
 version = "0.1.0"
 dependencies = [
  "art 0.1.0",
