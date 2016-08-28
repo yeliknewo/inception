@@ -15,18 +15,18 @@ use time::{precise_time_ns};
 use comps::{RenderId, Transform, Camera, RenderData, Clickable, Wire, WireIn, WireOut};
 use comps::non_components::{Map};
 
-use sys::{Render, Control};
+use sys::{Render, Control, Mapper, WireFlow, LinkConnector, mapper};
 
 use graphics::{load_texture};
 
 use event::{GameEventHub};
 
-use utils::{Delta};
+use utils::{Delta, GfxCoord};
 use utils::fps_counter::{FpsCounter};
 
-use math::{OrthographicHelper, Point2, Point3I};
+use math::{OrthographicHelper, Point2, Rect};
 
-use art::{layers, wires, make_square_render};
+use art::{layers, wires, empty, make_square_render};
 
 //*************************************************************************************************
 
@@ -49,7 +49,9 @@ pub struct Game {
     planner: Planner<Delta>,
     last_time: u64,
     channel: Channel,
+    mapper_channel: mapper::channel::Game,
     fps_counter: FpsCounter,
+    wires_render: RenderId,
 }
 
 impl Game {
@@ -102,6 +104,39 @@ impl Game {
             Err(err) => panic!("error finding assets folder: {}", err),
         };
 
+        //spritesheet for empty tiles
+        let empty_render = {
+            let texture = load_texture(
+                factory,
+                assets_folder.join(
+                    empty::NAME
+                )
+            );
+            renderer.add_render_spritesheet(
+                factory,
+                &packet,
+                texture
+            )
+        };
+
+        //create 21x21 grid of empty tiles
+        for y in -10..11isize {
+            for x in -10..11isize {
+                planner.mut_world().create_now()
+                    .with(empty_render)//empty tile spritesheet
+                    .with(Transform::new(
+                        nalgebra::Isometry3::new(
+                            nalgebra::Vector3::new(x as GfxCoord, y as GfxCoord, 0.0),
+                            nalgebra::Vector3::new(0.0, 0.0, 0.0)
+                        ),
+                        nalgebra::Vector3::new(1.0, 1.0, 1.0)
+                    ))//with transform (x,y)
+                    .with(Clickable::new(Rect::new_from_coords(0.0, 0.0, 1.0, 1.0)))//that can be clicked on
+                    .with(RenderData::new(layers::EMPTY, empty::DEFAULT_TINT, empty::RECT, empty::SIZE))//with render data that is of empty
+                    .build();
+            }
+        }
+
         //wires render with spritesheet id
         let wires_render = {
             let texture = load_texture(
@@ -117,44 +152,44 @@ impl Game {
             )
         };
 
-        planner.mut_world().create_now()
-            .with(wires_render)
-            .with(Transform::new(
-                nalgebra::Isometry3::new(
-                    nalgebra::Vector3::new(-1.0, 0.0, 1.0),
-                    nalgebra::Vector3::new(0.0, 0.0, 0.0)
-                ),
-                nalgebra::Vector3::new(1.0, 1.0, 1.0)
-            ))
-            .with(WireIn::new_from_points(Point3I::new(0, 0, 0), Point3I::new(-1, 0, 0)))
-            .with(RenderData::new(layers::WIRES, wires::DEFAULT_TINT, wires::RECT, wires::SIZE))
-            .build();
-
-        planner.mut_world().create_now()
-            .with(wires_render)
-            .with(Transform::new(
-                nalgebra::Isometry3::new(
-                    nalgebra::Vector3::new(0.0, 0.0, 1.0),
-                    nalgebra::Vector3::new(0.0, 0.0, 0.0)
-                ),
-                nalgebra::Vector3::new(1.0, 1.0, 1.0)
-            ))
-            .with(Wire::new_from_points(Point3I::new(-1, 0, 0), Point3I::new(1, 0, 0), Point3I::new(0, 0, 0)))
-            .with(RenderData::new(layers::WIRES, wires::DEFAULT_TINT, wires::RECT, wires::SIZE))
-            .build();
-
-        planner.mut_world().create_now()
-            .with(wires_render)
-            .with(Transform::new(
-                nalgebra::Isometry3::new(
-                    nalgebra::Vector3::new(1.0, 0.0, 1.0),
-                    nalgebra::Vector3::new(0.0, 0.0, 0.0)
-                ),
-                nalgebra::Vector3::new(1.0, 1.0, 1.0)
-            ))
-            .with(WireOut::new_from_points(Point3I::new(0, 0, 0), Point3I::new(1, 0, 0)))
-            .with(RenderData::new(layers::WIRES, wires::DEFAULT_TINT, wires::RECT, wires::SIZE))
-            .build();
+        // planner.mut_world().create_now()
+        //     .with(wires_render)
+        //     .with(Transform::new(
+        //         nalgebra::Isometry3::new(
+        //             nalgebra::Vector3::new(-1.0, 0.0, 1.0),
+        //             nalgebra::Vector3::new(0.0, 0.0, 0.0)
+        //         ),
+        //         nalgebra::Vector3::new(1.0, 1.0, 1.0)
+        //     ))
+        //     .with(WireIn::new_from_points(Point3I::new(0, 0, 0), Point3I::new(-1, 0, 0)))
+        //     .with(RenderData::new(layers::WIRES, wires::DEFAULT_TINT, wires::RECT, wires::SIZE))
+        //     .build();
+        //
+        // planner.mut_world().create_now()
+        //     .with(wires_render)
+        //     .with(Transform::new(
+        //         nalgebra::Isometry3::new(
+        //             nalgebra::Vector3::new(0.0, 0.0, 1.0),
+        //             nalgebra::Vector3::new(0.0, 0.0, 0.0)
+        //         ),
+        //         nalgebra::Vector3::new(1.0, 1.0, 1.0)
+        //     ))
+        //     .with(Wire::new_from_points(Point3I::new(-1, 0, 0), Point3I::new(1, 0, 0), Point3I::new(0, 0, 0)))
+        //     .with(RenderData::new(layers::WIRES, wires::DEFAULT_TINT, wires::RECT, wires::SIZE))
+        //     .build();
+        //
+        // planner.mut_world().create_now()
+        //     .with(wires_render)
+        //     .with(Transform::new(
+        //         nalgebra::Isometry3::new(
+        //             nalgebra::Vector3::new(1.0, 0.0, 1.0),
+        //             nalgebra::Vector3::new(0.0, 0.0, 0.0)
+        //         ),
+        //         nalgebra::Vector3::new(1.0, 1.0, 1.0)
+        //     ))
+        //     .with(WireOut::new_from_points(Point3I::new(0, 0, 0), Point3I::new(1, 0, 0)))
+        //     .with(RenderData::new(layers::WIRES, wires::DEFAULT_TINT, wires::RECT, wires::SIZE))
+        //     .build();
 
         planner.add_system(
             Control::new(
@@ -171,6 +206,26 @@ impl Game {
             30
         );
 
+        planner.add_system(
+            Mapper::new(
+                game_event_hub.mapper_channel_mapper.take().expect("Game Event Hub Mapper Channel Mapper was none"),
+            ),
+            "mapper",
+            29
+        );
+
+        planner.add_system(
+            LinkConnector::new(),
+            "link connector",
+            28
+        );
+
+        planner.add_system(
+            WireFlow::new(),
+            "wire flow",
+            27
+        );
+
         planner.add_system(renderer, "renderer", 10);
 
         Game {
@@ -180,7 +235,9 @@ impl Game {
                 Some(channel) => channel,
                 None => panic!("game event hub game channel was none"),
             },
+            mapper_channel: game_event_hub.mapper_channel_game.take().expect("Game event hub mapper channel game was none"),
             fps_counter: FpsCounter::new(),
+            wires_render: wires_render,
         }
     }
 

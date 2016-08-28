@@ -17,9 +17,11 @@ extern crate art;
 pub mod control;
 pub mod render;
 pub mod link_connector;
+pub mod mapper;
 pub mod wire_flow;
 
 pub use self::control::System as Control;
 pub use self::render::System as Render;
 pub use self::link_connector::System as LinkConnector;
+pub use self::mapper::System as Mapper;
 pub use self::wire_flow::System as WireFlow;

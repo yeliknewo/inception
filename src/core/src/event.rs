@@ -1,7 +1,7 @@
 use std::sync::mpsc::{Sender, Receiver, channel, TryRecvError};
 use glutin::Event;
 
-use sys::{control, render};
+use sys::{control, render, mapper};
 use ::game;
 
 #[derive(Debug)]
@@ -9,6 +9,8 @@ pub struct GameEventHub {
     pub control_channel: Option<control::Channel>,
     pub render_channel: Option<render::Channel>,
     pub game_channel: Option<game::Channel>,
+    pub mapper_channel_mapper: Option<mapper::channel::Mapper>,
+    pub mapper_channel_game: Option<mapper::channel::Game>,
 }
 
 impl GameEventHub {
@@ -16,11 +18,15 @@ impl GameEventHub {
         control_channel: control::Channel,
         render_channel: render::Channel,
         game_channel: game::Channel,
+        mapper_channel_mapper: mapper::channel::Mapper,
+        mapper_channel_game: mapper::channel::Game,
     ) -> GameEventHub {
         GameEventHub {
             control_channel: Some(control_channel),
             render_channel: Some(render_channel),
             game_channel: Some(game_channel),
+            mapper_channel_mapper: Some(mapper_channel_mapper),
+            mapper_channel_game: Some(mapper_channel_game),
         }
     }
 }
@@ -43,6 +49,8 @@ impl DevEventHub{
         let (send_from_render, recv_from_render) = channel();
         let (send_to_game, recv_to_game) = channel();
         let (send_from_game, recv_from_game) = channel();
+        let (send_to_mapper, recv_to_mapper) = channel();
+        let (send_from_mapper, recv_from_mapper) = channel();
 
         (
             DevEventHub::new_internal(
@@ -50,7 +58,13 @@ impl DevEventHub{
                 send_to_render, recv_from_render,
                 send_to_game, recv_from_game,
             ),
-            GameEventHub::new((send_from_control, recv_to_control), (send_from_render, recv_to_render), (send_from_game, recv_to_game))
+            GameEventHub::new(
+                (send_from_control, recv_to_control),
+                (send_from_render, recv_to_render),
+                (send_from_game, recv_to_game),
+                (send_from_mapper, recv_to_mapper),
+                (send_to_mapper, recv_from_mapper)
+            )
         )
     }
 
