@@ -26,8 +26,7 @@ impl Component {
         proj: OrthographicMatrix3<GfxCoord>,
         aspect_ratio: GfxCoord,
         is_main: bool
-    ) -> Component
-    {
+    ) -> Component {
         Component {
             eye: eye,
             target: target,

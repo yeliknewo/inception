@@ -12,7 +12,8 @@ use time::{precise_time_ns};
 
 //*************************************************************************************************
 
-use comps::{RenderId, Transform, Camera, RenderData, Clickable};
+use comps::{RenderId, Transform, Camera, RenderData, Clickable, Wire, WireIn, WireOut};
+use comps::non_components::{Map};
 
 use sys::{Render, Control};
 
@@ -23,9 +24,9 @@ use event::{GameEventHub};
 use utils::{Delta};
 use utils::fps_counter::{FpsCounter};
 
-use math::{OrthographicHelper, Point2};
+use math::{OrthographicHelper, Point2, Point3I};
 
-use art::square::make_square_render;
+use art::{layers, wires, make_square_render};
 
 //*************************************************************************************************
 
@@ -67,6 +68,11 @@ impl Game {
             w.register::<Camera>();
             w.register::<RenderData>();
             w.register::<Clickable>();
+            w.register::<Wire>();
+            w.register::<WireIn>();
+            w.register::<WireOut>();
+
+            w.add_resource(Map::new());
 
             Planner::<Delta>::new(w, 8)
         };
@@ -76,6 +82,7 @@ impl Game {
             None => panic!("game event hub render channel was none"),
         });
 
+        //make the camera
         planner.mut_world().create_now()
             .with(Camera::new_from_ortho_helper(
                 nalgebra::Point3::new(0.0, 0.0, 2.0),
@@ -86,18 +93,21 @@ impl Game {
             ))
             .build();
 
+        //make the basic square render packet
         let packet = make_square_render();
 
+        //find the assets folder
         let assets_folder = match Search::ParentsThenKids(3, 3).for_folder("assets") {
             Ok(path) => path,
             Err(err) => panic!("error finding assets folder: {}", err),
         };
 
-        let all_render = {
+        //wires render with spritesheet id
+        let wires_render = {
             let texture = load_texture(
                 factory,
                 assets_folder.join(
-                    "spritesheet1.png"
+                    wires::NAME
                 )
             );
             renderer.add_render_spritesheet(
@@ -108,7 +118,20 @@ impl Game {
         };
 
         planner.mut_world().create_now()
-            .with(all_render)
+            .with(wires_render)
+            .with(Transform::new(
+                nalgebra::Isometry3::new(
+                    nalgebra::Vector3::new(-1.0, 0.0, 1.0),
+                    nalgebra::Vector3::new(0.0, 0.0, 0.0)
+                ),
+                nalgebra::Vector3::new(1.0, 1.0, 1.0)
+            ))
+            .with(WireIn::new_from_points(Point3I::new(0, 0, 0), Point3I::new(-1, 0, 0)))
+            .with(RenderData::new(layers::WIRES, wires::DEFAULT_TINT, wires::RECT, wires::SIZE))
+            .build();
+
+        planner.mut_world().create_now()
+            .with(wires_render)
             .with(Transform::new(
                 nalgebra::Isometry3::new(
                     nalgebra::Vector3::new(0.0, 0.0, 1.0),
@@ -116,7 +139,21 @@ impl Game {
                 ),
                 nalgebra::Vector3::new(1.0, 1.0, 1.0)
             ))
-            // .with(::comps::RenderData::new(::art::square::layers::PLAYER, ::art::square::p1::DEFAULT_TINT, ::art::square::p1::STAND, ::art::square::p1::SIZE))
+            .with(Wire::new_from_points(Point3I::new(-1, 0, 0), Point3I::new(1, 0, 0), Point3I::new(0, 0, 0)))
+            .with(RenderData::new(layers::WIRES, wires::DEFAULT_TINT, wires::RECT, wires::SIZE))
+            .build();
+
+        planner.mut_world().create_now()
+            .with(wires_render)
+            .with(Transform::new(
+                nalgebra::Isometry3::new(
+                    nalgebra::Vector3::new(1.0, 0.0, 1.0),
+                    nalgebra::Vector3::new(0.0, 0.0, 0.0)
+                ),
+                nalgebra::Vector3::new(1.0, 1.0, 1.0)
+            ))
+            .with(WireOut::new_from_points(Point3I::new(0, 0, 0), Point3I::new(1, 0, 0)))
+            .with(RenderData::new(layers::WIRES, wires::DEFAULT_TINT, wires::RECT, wires::SIZE))
             .build();
 
         planner.add_system(

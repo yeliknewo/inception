@@ -1,18 +1,18 @@
 use glutin::MouseButton;
 
-use std::sync::mpsc::{Sender, Receiver};
+use std::sync::mpsc::{TryRecvError, Sender, Receiver};
 
-use specs;
-use specs::{RunArg};
+use specs::{self, RunArg};
+
+//*************************************************************************************************
 
 use math::{OrthographicHelper, Point2};
 
-use comps::{Transform};
-use comps::{Camera};
-use comps::{Clickable};
-use comps::{RenderData};
+use comps::{Transform, Camera, Clickable};
 
 use utils::{Delta, GfxCoord, Coord};
+
+//*************************************************************************************************
 
 pub type Channel = (
     Sender<SendEvent>,
@@ -65,8 +65,7 @@ impl System {
         mouse_location: Point2,
         screen_resolution: Point2,
         ortho_helper: OrthographicHelper,
-    ) -> System
-    {
+    ) -> System {
         System {
             channel: channel,
             move_h: Sign::Zero,
@@ -138,7 +137,7 @@ impl System {
                         return;
                     },
                 },
-                Err(::std::sync::mpsc::TryRecvError::Empty) => return,
+                Err(TryRecvError::Empty) => return,
                 Err(err) => {
                     error!("check input channel try recv error: {}", err);
                     self.exited = true;
@@ -150,7 +149,7 @@ impl System {
 }
 
 impl specs::System<Delta> for System {
-    fn run(&mut self, arg: RunArg, time: Delta) {
+    fn run(&mut self, arg: RunArg, delta_time: Delta) {
         use specs::Join;
 
         self.check_input();
@@ -160,18 +159,17 @@ impl specs::System<Delta> for System {
             return;
         }
 
-        let (transform, mut camera, mut clickable, mut texture_data) = arg.fetch(|w|
+        let (transforms, mut cameras, mut clickables) = arg.fetch(|w|
             (
                 w.read::<Transform>(),
                 w.write::<Camera>(),
                 w.write::<Clickable>(),
-                w.write::<RenderData>()
             )
         );
 
         let mut camera_opt = None;
 
-        for mut c in (&mut camera).iter() {
+        for mut c in (&mut cameras).iter() {
             if c.is_main() {
                 match (self.move_h, self.move_v) {
                     (Sign::Zero, Sign::Zero) => (),
@@ -188,8 +186,8 @@ impl specs::System<Delta> for System {
                         };
                         let offset = c.get_offset();
                         c.set_offset(Point2::new(
-                            move_h * time * self.move_speed_mult.get_x() + offset.get_x(),
-                            move_v * time * self.move_speed_mult.get_y() + offset.get_y()
+                            move_h * delta_time * self.move_speed_mult.get_x() + offset.get_x(),
+                            move_v * delta_time * self.move_speed_mult.get_y() + offset.get_y()
                         ));
                     },
                 }
@@ -211,13 +209,11 @@ impl specs::System<Delta> for System {
         if let Some(input) = self.mouse_button.pop() {
             match input {
                 (true, MouseButton::Left) => {
-                    for (t, mut c, mut td) in (&transform, &mut clickable, &mut texture_data).iter() {
-                        if  c.hitbox.check_collide_point(camera.screen_to_world_point(self.mouse_location.clone()) + t.get_gui_offset()) {
-                            c.clicked = true;
-                            // td.set_tint(::art::square::tiles::SELECTED_TINT);
-                        } else if c.clicked {
-                            c.clicked = false;
-                            // td.set_tint(::art::square::tiles::FOREGROUND_TINT);
+                    for (t, mut c) in (&transforms, &mut clickables).iter() {
+                        if c.get_hitbox().check_collide_point(camera.screen_to_world_point(self.mouse_location.clone()) + t.get_gui_offset()) {
+                            *c.get_mut_clicked() = true;
+                        } else if c.get_clicked() {
+                            *c.get_mut_clicked() = false;
                         }
                     }
                 },

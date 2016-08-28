@@ -182,7 +182,8 @@ impl System {
                     tint: rd.get_tint(),
                     spritesheet_rect: rd.get_spritesheet_rect(),
                     spritesheet_size: rd.get_spritesheet_size(),
-                    mirror: rd.get_mirror(),
+                    mirror_x: rd.get_mirror_x(),
+                    mirror_y: rd.get_mirror_y(),
                 });
             }
 

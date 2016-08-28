@@ -21,7 +21,8 @@ gfx_defines! {
         tint: [f32; 4] = "u_Tint",
         spritesheet_rect: [f32; 4] = "u_SpritesheetRect",
         spritesheet_size: [f32; 2] = "u_SpritesheetSize",
-        mirror: bool = "u_Mirror",
+        mirror_x: bool = "u_MirrorX",
+        mirror_y: bool = "u_MirrorY",
     }
 
     pipeline pipe {

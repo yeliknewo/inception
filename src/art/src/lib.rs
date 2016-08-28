@@ -29,6 +29,17 @@ pub fn make_square_render() -> Packet {
     Packet::new(vertices, indices, rasterizer)
 }
 
+pub mod layers {
+    pub const WIRES: u8 = 0;
+}
+
+pub mod wires {
+    pub const NAME: &'static str = "wires.png";
+    pub const SIZE: [f32; 2] = [32.0, 32.0];
+    pub const RECT: [f32; 4] = [0.0, 0.0, 32.0, 32.0];
+    pub const DEFAULT_TINT: [f32; 4] = [0.5, 0.5, 0.5, 1.0];
+}
+
 // pub const ERROR: &'static [f32; 4] = &[0.0, 0.0, 1.0, 1.0];
 //
 // pub mod layers {
