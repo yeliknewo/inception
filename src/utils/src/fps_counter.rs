@@ -1,5 +1,7 @@
+use ::Delta;
+
 pub struct FpsCounter {
-    current_delta: ::Delta,
+    current_delta: Delta,
     frames: u32,
 }
 
@@ -11,7 +13,7 @@ impl FpsCounter {
         }
     }
 
-    pub fn frame(&mut self, delta: ::Delta) {
+    pub fn frame(&mut self, delta: Delta) {
         self.frames += 1;
 
         self.current_delta += delta;

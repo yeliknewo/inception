@@ -26,7 +26,7 @@ use math::{Point2, OrthographicHelper};
 use utils::{GfxCoord};
 use graphics::{build_graphics};
 use event::{DevEventHub};
-use sys::{render, control, tile_builder};
+use sys::{render, control};
 use game::{Game};
 
 pub fn start() {
@@ -102,24 +102,8 @@ pub fn start() {
             None => (),
         }
 
-        while match event_dev.try_recv_from_tile_builder() {
-            Some(event) => match event {
-                tile_builder::SendEvent::NewTile(_, _, _, _) => {
-                    event_dev.send_to_game(game::RecvEvent::TileBuilder(event));
-                    true
-                },
-            },
-            None => false,
-        } {
-
-        }
-
         while match event_dev.try_recv_from_game() {
             Some(event) => match event {
-                ::game::SendEvent::TileBuilder(event) => {
-                    event_dev.send_to_tile_builder(event);
-                    true
-                },
                 ::game::SendEvent::Exited => panic!("game exited while in main loop"),
             },
             None => false,
